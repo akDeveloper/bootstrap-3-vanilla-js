@@ -158,6 +158,52 @@
         </div>
       </section>
 
+      <!-- Tabs -->
+      <section class="demo-section" id="section-tabs">
+        <h2>Tabs</h2>
+        <ul class="nav nav-tabs" role="tablist">
+          <li role="presentation" class="active">
+            <a href="#tab-home" data-toggle="tab" role="tab" aria-controls="tab-home" aria-expanded="true">Home</a>
+          </li>
+          <li role="presentation">
+            <a href="#tab-profile" data-toggle="tab" role="tab" aria-controls="tab-profile" aria-expanded="false">Profile</a>
+          </li>
+          <li role="presentation">
+            <a href="#tab-settings" data-toggle="tab" role="tab" aria-controls="tab-settings" aria-expanded="false">Settings</a>
+          </li>
+        </ul>
+        <div class="tab-content" style="padding-top: 15px">
+          <div role="tabpanel" class="tab-pane active" id="tab-home">
+            <p class="well well-sm">Home tab panel. Switch tabs with the links above.</p>
+          </div>
+          <div role="tabpanel" class="tab-pane" id="tab-profile">
+            <p class="well well-sm">Profile tab panel.</p>
+          </div>
+          <div role="tabpanel" class="tab-pane" id="tab-settings">
+            <p class="well well-sm">Settings tab panel.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tooltips -->
+      <section class="demo-section" id="section-tooltips">
+        <h2>Tooltips <small>(plain text only)</small></h2>
+        <p>
+          <button
+            type="button"
+            class="btn btn-default"
+            data-toggle="tooltip"
+            data-placement="top"
+            title="Simple hover tooltip — title is plain text, never HTML."
+          >
+            Hover me
+          </button>
+        </p>
+        <p class="text-muted small">
+          Titles are rendered with <code>textContent</code> only — no <code>html</code> option and no remote content.
+        </p>
+      </section>
+
       <!-- Modal -->
       <section class="demo-section" id="section-modal">
         <h2>Modal</h2>
@@ -280,6 +326,11 @@
       </div>
     </div>
 
-    <script src="js/bootstrap-vanilla.js?v=1" defer></script>
+    <script src="js/bootstrap-vanilla.js" defer></script>
+    <script defer>
+      document.addEventListener('DOMContentLoaded', function () {
+        BootstrapVanilla.tooltip('[data-toggle="tooltip"]', { animation: false });
+      });
+    </script>
   </body>
 </html>

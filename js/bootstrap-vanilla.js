@@ -1,5 +1,5 @@
 /*!
- * Bootstrap 3.4.1 behavior — vanilla JS (modal, dropdown, alert, collapse, carousel)
+ * Bootstrap 3.4.1 behavior — vanilla JS (modal, dropdown, alert, collapse, carousel, tab, tooltip)
  *
  * Usage: include after Bootstrap 3 CSS. Do not load jQuery or bootstrap.js for these
  * components (avoid duplicate handlers).
@@ -7,13 +7,14 @@
  * Dispatched events match Bootstrap 3: show.bs.modal, shown.bs.modal, hide.bs.modal,
  * hidden.bs.modal (modal remote HTML / loaded.bs.modal intentionally omitted — no innerHTML);
  * show/hide/shown/hidden.bs.dropdown; show/shown/hide/
- * hidden.bs.collapse; slide/slid.bs.carousel; close.bs.alert, closed.bs.alert.
+ * hidden.bs.collapse; slide/slid.bs.carousel; close.bs.alert, closed.bs.alert;
+ * show/hide/shown/hidden.bs.tab; show/shown/hide/hidden/inserted.bs.tooltip.
  *
  * CSS: this file does not animate. Bootstrap’s .fade / .carousel.slide rules may still
  * apply CSS transitions; remove those classes or override in CSS for fully instant UI.
  *
  * Public API: global BootstrapVanilla.init() runs on DOMContentLoaded; methods
- * BootstrapVanilla.modal(selector, option), .collapse(), .carousel() for programmatic use.
+ * BootstrapVanilla.modal(selector, option), .collapse(), .carousel(), .tab(), .tooltip().
  *
  * XSS: no innerHTML, eval, or network-loaded HTML. Selectors come from existing DOM attributes;
  * keep server-rendered data-target/href/id values trusted. Programmatic APIs should not pass
@@ -1044,6 +1045,680 @@
     }
   }
 
+  // --- Tab ---
+  // Reference: Bootstrap 3.4.1 tab.js — https://github.com/twbs/bootstrap/blob/v3.4.1/js/tab.js
+
+  var tabMap = new WeakMap();
+  var TAB_TOGGLE = '[data-toggle="tab"], [data-toggle="pill"]';
+
+  function getTabSelectorFromTrigger(trigger) {
+    var selector = trigger.getAttribute('data-target');
+    if (!selector) {
+      var href = trigger.getAttribute('href');
+      selector = href && stripHashHref(href);
+    }
+    return selector || null;
+  }
+
+  function findDirectActiveChild(container) {
+    if (!container || !container.children) return null;
+    var children = container.children;
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].classList.contains('active')) return children[i];
+    }
+    return null;
+  }
+
+  function Tab(element) {
+    this.element = element;
+  }
+
+  Tab.VERSION = '3.4.1';
+
+  Tab.prototype.show = function () {
+    var trigger = this.element;
+    var ul = closest(trigger, 'ul:not(.dropdown-menu)');
+    if (!ul) return;
+
+    var selector = getTabSelectorFromTrigger(trigger);
+    if (!selector) return;
+
+    var li = closest(trigger, 'li');
+    if (!li || li.classList.contains('active')) return;
+
+    var previousLi = findDirectActiveChild(ul);
+    var previousLink = previousLi ? findOne(previousLi, 'a') : null;
+
+    var hideEvt = previousLink
+      ? fireEvent(previousLink, 'hide.bs.tab', { relatedTarget: trigger }, true)
+      : { defaultPrevented: false };
+    var showEvt = fireEvent(
+      trigger,
+      'show.bs.tab',
+      { relatedTarget: previousLink || null },
+      true
+    );
+
+    if (showEvt.defaultPrevented || hideEvt.defaultPrevented) return;
+
+    var target = findOne(document, selector);
+    if (!target) return;
+
+    this.activate(li, ul);
+    this.activate(target, target.parentNode, function () {
+      if (previousLink) {
+        fireEvent(previousLink, 'hidden.bs.tab', { relatedTarget: trigger }, false);
+      }
+      fireEvent(trigger, 'shown.bs.tab', { relatedTarget: previousLink || null }, false);
+    });
+  };
+
+  Tab.prototype.activate = function (element, container, callback) {
+    if (!element || !container) {
+      if (callback) callback();
+      return;
+    }
+
+    var activeEl = findDirectActiveChild(container);
+
+    if (activeEl) {
+      activeEl.classList.remove('active', 'in');
+      var nestedActives = findAll(activeEl, '.dropdown-menu > .active');
+      for (var i = 0; i < nestedActives.length; i++) {
+        nestedActives[i].classList.remove('active');
+      }
+      var tabToggles = findAll(activeEl, '[data-toggle="tab"], [data-toggle="pill"]');
+      for (var j = 0; j < tabToggles.length; j++) {
+        tabToggles[j].setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    element.classList.add('active');
+    element.classList.remove('fade');
+
+    var togglesInElement = findAll(element, '[data-toggle="tab"], [data-toggle="pill"]');
+    for (var k = 0; k < togglesInElement.length; k++) {
+      togglesInElement[k].setAttribute('aria-expanded', 'true');
+    }
+
+    if (closest(element, '.dropdown-menu')) {
+      var dropdownLi = closest(element, 'li.dropdown');
+      if (dropdownLi) dropdownLi.classList.add('active');
+    }
+
+    if (callback) callback();
+  };
+
+  function tabPluginAction(element, option) {
+    var data = tabMap.get(element);
+    if (!data) {
+      data = new Tab(element);
+      tabMap.set(element, data);
+    }
+    if (typeof option === 'string') data[option]();
+    else data.show();
+  }
+
+  function initTab() {
+    on(document, 'click', TAB_TOGGLE, function (e) {
+      e.preventDefault();
+      tabPluginAction(this, 'show');
+    });
+  }
+
+  // --- Tooltip ---
+  // Reference: Bootstrap 3.4.1 tooltip.js — https://github.com/twbs/bootstrap/blob/v3.4.1/js/tooltip.js
+  // Plain-text titles only (textContent). No html option, no remote content, fixed DOM template.
+
+  var tooltipMap = new WeakMap();
+
+  function createTooltipTipElement() {
+    var tip = document.createElement('div');
+    tip.className = 'tooltip';
+    tip.setAttribute('role', 'tooltip');
+    var arrow = document.createElement('div');
+    arrow.className = 'tooltip-arrow';
+    var inner = document.createElement('div');
+    inner.className = 'tooltip-inner';
+    tip.appendChild(arrow);
+    tip.appendChild(inner);
+    return tip;
+  }
+
+  function normalizeTooltipDelay(delay) {
+    if (delay && typeof delay === 'object') return delay;
+    var n = delay || 0;
+    return { show: n, hide: n };
+  }
+
+  function parseTooltipOptions(element, options) {
+    var opts = extend({}, Tooltip.DEFAULTS, parseDataOptions(element), options || {});
+    opts.delay = normalizeTooltipDelay(opts.delay);
+    if (typeof opts.placement !== 'string') opts.placement = Tooltip.DEFAULTS.placement;
+    if (typeof opts.trigger !== 'string') opts.trigger = Tooltip.DEFAULTS.trigger;
+    return opts;
+  }
+
+  function tooltipTriggerList(options) {
+    return String(options.trigger || '')
+      .trim()
+      .split(/\s+/)
+      .filter(function (t) {
+        return !!t;
+      });
+  }
+
+  function getScrollTop(el) {
+    return el === document.body
+      ? global.pageYOffset || document.documentElement.scrollTop || 0
+      : el.scrollTop;
+  }
+
+  function getScrollLeft(el) {
+    return el === document.body
+      ? global.pageXOffset || document.documentElement.scrollLeft || 0
+      : el.scrollLeft;
+  }
+
+  function getElementOffset(el) {
+    var rect = el.getBoundingClientRect();
+    return {
+      top: rect.top + getScrollTop(document.documentElement),
+      left: rect.left + getScrollLeft(document.documentElement),
+      width: rect.width || rect.right - rect.left,
+      height: rect.height || rect.bottom - rect.top
+    };
+  }
+
+  function getElementClientRect(el) {
+    if (!el) return null;
+    var rect = el.getBoundingClientRect();
+    var width = rect.width != null ? rect.width : rect.right - rect.left;
+    var height = rect.height != null ? rect.height : rect.bottom - rect.top;
+    return {
+      top: rect.top,
+      left: rect.left,
+      width: width,
+      height: height,
+      bottom: rect.bottom,
+      right: rect.right
+    };
+  }
+
+  function getWindowViewport() {
+    return {
+      width: global.innerWidth || document.documentElement.clientWidth,
+      height: global.innerHeight || document.documentElement.clientHeight
+    };
+  }
+
+  function getElementPosition(el, viewportEl) {
+    if (!el) return null;
+    var isBody = el.tagName === 'BODY';
+    var rect = el.getBoundingClientRect();
+    var width = rect.width != null ? rect.width : rect.right - rect.left;
+    var height = rect.height != null ? rect.height : rect.bottom - rect.top;
+    var pos = {
+      top: rect.top,
+      left: rect.left,
+      width: width,
+      height: height,
+      bottom: rect.bottom,
+      right: rect.right
+    };
+    if (isBody) {
+      pos.width = global.innerWidth || document.documentElement.clientWidth;
+      pos.height = global.innerHeight || document.documentElement.clientHeight;
+    } else if (!viewportEl || viewportEl === el) {
+      var off = getElementOffset(el);
+      pos.top = off.top;
+      pos.left = off.left;
+      pos.bottom = off.top + off.height;
+      pos.right = off.left + off.width;
+    }
+    if (viewportEl) {
+      pos.scroll = getScrollTop(viewportEl);
+    }
+    return pos;
+  }
+
+  function Tooltip(element, options) {
+    this.type = 'tooltip';
+    this.element = element;
+    this.options = parseTooltipOptions(element, options);
+    this.enabled = true;
+    this.timeout = null;
+    this.hoverState = null;
+    this.tipEl = null;
+    this.arrowEl = null;
+    this.inState = { click: false, hover: false, focus: false };
+    this._handlers = [];
+    this.viewportEl =
+      this.options.viewport &&
+      findOne(
+        document,
+        this.options.viewport.selector || this.options.viewport
+      );
+
+    this.init();
+  }
+
+  Tooltip.VERSION = '3.4.1';
+
+  Tooltip.DEFAULTS = {
+    animation: true,
+    placement: 'top',
+    trigger: 'hover focus',
+    title: '',
+    delay: 0,
+    container: false,
+    viewport: { selector: 'body', padding: 0 }
+  };
+
+  Tooltip.prototype.on = function (target, eventType, handler) {
+    target.addEventListener(eventType, handler);
+    this._handlers.push([target, eventType, handler]);
+  };
+
+  Tooltip.prototype.offAll = function () {
+    for (var i = 0; i < this._handlers.length; i++) {
+      var h = this._handlers[i];
+      h[0].removeEventListener(h[1], h[2]);
+    }
+    this._handlers = [];
+  };
+
+  Tooltip.prototype.init = function () {
+    var triggers = tooltipTriggerList(this.options);
+    var self = this;
+
+    this.offAll();
+
+    for (var i = 0; i < triggers.length; i++) {
+      var trigger = triggers[i];
+      if (trigger === 'manual') continue;
+      if (trigger === 'click') {
+        this.on(this.element, 'click', function (e) {
+          self.toggle(e);
+        });
+      } else {
+        var eventIn = trigger === 'hover' ? 'mouseenter' : 'focusin';
+        var eventOut = trigger === 'hover' ? 'mouseleave' : 'focusout';
+        this.on(this.element, eventIn, function (e) {
+          self.enter(e);
+        });
+        this.on(this.element, eventOut, function (e) {
+          self.leave(e);
+        });
+      }
+    }
+
+    this.fixTitle();
+  };
+
+  Tooltip.prototype.fixTitle = function () {
+    var el = this.element;
+    var title = el.getAttribute('title');
+    if (title != null && title !== '') {
+      el.setAttribute('data-original-title', title);
+    } else if (!el.hasAttribute('data-original-title')) {
+      el.setAttribute('data-original-title', '');
+    }
+    if (el.hasAttribute('title')) {
+      el.removeAttribute('title');
+    }
+  };
+
+  Tooltip.prototype.getTitle = function () {
+    var title =
+      this.element.getAttribute('data-original-title') ||
+      (typeof this.options.title === 'function'
+        ? this.options.title.call(this.element)
+        : this.options.title);
+    if (title == null) title = '';
+    return String(title);
+  };
+
+  Tooltip.prototype.hasContent = function () {
+    return this.getTitle().length > 0;
+  };
+
+  Tooltip.prototype.tip = function () {
+    if (!this.tipEl) {
+      this.tipEl = createTooltipTipElement();
+    }
+    return this.tipEl;
+  };
+
+  Tooltip.prototype.arrow = function () {
+    if (!this.arrowEl) {
+      this.arrowEl = findOne(this.tip(), '.tooltip-arrow');
+    }
+    return this.arrowEl;
+  };
+
+  Tooltip.prototype.getUID = function (prefix) {
+    do {
+      prefix += ~~(Math.random() * 1000000);
+    } while (document.getElementById(prefix));
+    return prefix;
+  };
+
+  Tooltip.prototype.isInStateTrue = function () {
+    for (var key in this.inState) {
+      if (this.inState[key]) return true;
+    }
+    return false;
+  };
+
+  Tooltip.prototype.enter = function (obj) {
+    var self = obj instanceof Tooltip ? obj : this;
+    if (!(obj instanceof Tooltip)) {
+      if (obj && obj.type === 'focusin') self.inState.focus = true;
+      else if (obj && obj.type === 'mouseenter') self.inState.hover = true;
+    }
+
+    if (self.tip().classList.contains('in') || self.hoverState === 'in') {
+      self.hoverState = 'in';
+      return;
+    }
+
+    clearTimeout(self.timeout);
+    self.hoverState = 'in';
+
+    if (self.options.delay.show) {
+      self.timeout = setTimeout(function () {
+        if (self.hoverState === 'in') self.show();
+      }, self.options.delay.show);
+    } else {
+      self.show();
+    }
+  };
+
+  Tooltip.prototype.leave = function (obj) {
+    var self = obj instanceof Tooltip ? obj : this;
+    if (!(obj instanceof Tooltip)) {
+      if (obj && obj.type === 'focusout') self.inState.focus = false;
+      else if (obj && obj.type === 'mouseleave') self.inState.hover = false;
+    }
+
+    if (self.isInStateTrue()) return;
+
+    clearTimeout(self.timeout);
+    self.hoverState = 'out';
+
+    if (self.options.delay.hide) {
+      self.timeout = setTimeout(function () {
+        if (self.hoverState === 'out') self.hide();
+      }, self.options.delay.hide);
+    } else {
+      self.hide();
+    }
+  };
+
+  Tooltip.prototype.getCalculatedOffset = function (placement, pos, actualWidth, actualHeight) {
+    if (placement === 'bottom') {
+      return { top: pos.top + pos.height, left: pos.left + pos.width / 2 - actualWidth / 2 };
+    }
+    if (placement === 'top') {
+      return { top: pos.top - actualHeight, left: pos.left + pos.width / 2 - actualWidth / 2 };
+    }
+    if (placement === 'left') {
+      return { top: pos.top + pos.height / 2 - actualHeight / 2, left: pos.left - actualWidth };
+    }
+    return { top: pos.top + pos.height / 2 - actualHeight / 2, left: pos.left + pos.width };
+  };
+
+  Tooltip.prototype.getViewportAdjustedDelta = function (placement, pos, actualWidth, actualHeight) {
+    var delta = { top: 0, left: 0 };
+
+    var padding = (this.options.viewport && this.options.viewport.padding) || 0;
+    var viewportDimensions = getWindowViewport();
+    var scroll = 0;
+
+    if (/right|left/.test(placement)) {
+      var topEdgeOffset = pos.top - padding - scroll;
+      var bottomEdgeOffset = pos.top - scroll + padding + actualHeight;
+      if (topEdgeOffset < 0) delta.top = -topEdgeOffset;
+      else if (bottomEdgeOffset > viewportDimensions.height) {
+        delta.top = viewportDimensions.height - bottomEdgeOffset;
+      }
+    } else {
+      var leftEdgeOffset = pos.left - padding;
+      var rightEdgeOffset = pos.left + padding + actualWidth;
+      if (leftEdgeOffset < 0) delta.left = -leftEdgeOffset;
+      else if (rightEdgeOffset > viewportDimensions.width) {
+        delta.left = viewportDimensions.width - rightEdgeOffset;
+      }
+    }
+    return delta;
+  };
+
+  Tooltip.prototype.applyPlacement = function (offset, placement) {
+    var tip = this.tip();
+    var width = tip.offsetWidth;
+    var height = tip.offsetHeight;
+    var style = global.getComputedStyle(tip);
+    var marginTop = parseInt(style.marginTop, 10) || 0;
+    var marginLeft = parseInt(style.marginLeft, 10) || 0;
+
+    offset.top += marginTop;
+    offset.left += marginLeft;
+
+    tip.style.top = Math.round(offset.top) + 'px';
+    tip.style.left = Math.round(offset.left) + 'px';
+    tip.classList.add('in');
+
+    var actualWidth = tip.offsetWidth;
+    var actualHeight = tip.offsetHeight;
+
+    if (placement === 'top' && actualHeight !== height) {
+      offset.top = offset.top + height - actualHeight;
+      tip.style.top = Math.round(offset.top) + 'px';
+    }
+
+    var delta = this.getViewportAdjustedDelta(placement, offset, actualWidth, actualHeight);
+    if (delta.left) {
+      offset.left += delta.left;
+      tip.style.left = Math.round(offset.left) + 'px';
+    } else if (delta.top) {
+      offset.top += delta.top;
+      tip.style.top = Math.round(offset.top) + 'px';
+    }
+
+    var isVertical = /top|bottom/.test(placement);
+    var arrow = this.arrow();
+    if (arrow) {
+      var arrowDelta = isVertical
+        ? delta.left * 2 - width + actualWidth
+        : delta.top * 2 - height + actualHeight;
+      var dimension = isVertical ? actualWidth : actualHeight;
+      if (isVertical) {
+        arrow.style.left = 50 * (1 - arrowDelta / dimension) + '%';
+        arrow.style.top = '';
+      } else {
+        arrow.style.top = 50 * (1 - arrowDelta / dimension) + '%';
+        arrow.style.left = '';
+      }
+    }
+  };
+
+  Tooltip.prototype.setContent = function () {
+    var tip = this.tip();
+    var inner = findOne(tip, '.tooltip-inner');
+    if (inner) inner.textContent = this.getTitle();
+    tip.classList.remove('in', 'top', 'bottom', 'left', 'right');
+  };
+
+  Tooltip.prototype.show = function () {
+    this.fixTitle();
+    if (!this.hasContent() || !this.enabled) return;
+
+    var e = fireEvent(this.element, 'show.bs.tooltip', {}, true);
+    if (e.defaultPrevented) return;
+    if (!document.documentElement.contains(this.element)) return;
+
+    var tip = this.tip();
+    var tipId = this.getUID('tooltip');
+    this.setContent();
+    tip.setAttribute('id', tipId);
+    this.element.setAttribute('aria-describedby', tipId);
+
+    if (this.options.animation) tip.classList.add('fade');
+
+    var placement =
+      typeof this.options.placement === 'function'
+        ? this.options.placement.call(this, tip, this.element)
+        : this.options.placement;
+
+    var autoToken = /\s?auto?\s?/i;
+    var autoPlace = autoToken.test(placement);
+    if (autoPlace) placement = placement.replace(autoToken, '') || 'top';
+
+    tip.style.position = 'fixed';
+    tip.style.top = '0';
+    tip.style.left = '0';
+    tip.style.display = 'block';
+    tip.classList.add(placement);
+
+    if (tip.parentNode) tip.parentNode.removeChild(tip);
+
+    var container = this.options.container
+      ? findOne(document, this.options.container)
+      : null;
+    if (container) container.appendChild(tip);
+    else document.body.appendChild(tip);
+
+    fireEvent(this.element, 'inserted.bs.tooltip', {}, false);
+
+    var pos = getElementClientRect(this.element);
+    var actualWidth = tip.offsetWidth;
+    var actualHeight = tip.offsetHeight;
+
+    if (autoPlace) {
+      var orgPlacement = placement;
+      var viewportDim = getWindowViewport();
+      if (
+        placement === 'bottom' &&
+        pos.top + pos.height + actualHeight > viewportDim.height
+      ) {
+        placement = 'top';
+      } else if (placement === 'top' && pos.top - actualHeight < 0) {
+        placement = 'bottom';
+      } else if (
+        placement === 'right' &&
+        pos.left + pos.width + actualWidth > viewportDim.width
+      ) {
+        placement = 'left';
+      } else if (placement === 'left' && pos.left - actualWidth < 0) {
+        placement = 'right';
+      }
+      tip.classList.remove(orgPlacement);
+      tip.classList.add(placement);
+    }
+
+    var offset = this.getCalculatedOffset(placement, pos, actualWidth, actualHeight);
+    this.applyPlacement(offset, placement);
+
+    var self = this;
+    var prevHoverState = self.hoverState;
+    fireEvent(this.element, 'shown.bs.tooltip', {}, false);
+    self.hoverState = null;
+    if (prevHoverState === 'out') self.leave(self);
+  };
+
+  Tooltip.prototype.hide = function (callback) {
+    var self = this;
+    var tip = this.tip();
+    var e = fireEvent(this.element, 'hide.bs.tooltip', {}, true);
+    if (e.defaultPrevented) return;
+
+    tip.classList.remove('in');
+
+    if (this.hoverState !== 'in') {
+      if (tip.parentNode) tip.parentNode.removeChild(tip);
+      this.element.removeAttribute('aria-describedby');
+      fireEvent(this.element, 'hidden.bs.tooltip', {}, false);
+    }
+    this.hoverState = null;
+    if (callback) callback();
+  };
+
+  Tooltip.prototype.toggle = function (e) {
+    if (e) {
+      this.inState.click = !this.inState.click;
+      if (this.isInStateTrue()) this.enter(this);
+      else this.leave(this);
+    } else if (this.tip().classList.contains('in')) {
+      this.leave(this);
+    } else {
+      this.enter(this);
+    }
+  };
+
+  Tooltip.prototype.enable = function () {
+    this.enabled = true;
+  };
+
+  Tooltip.prototype.disable = function () {
+    this.enabled = false;
+  };
+
+  Tooltip.prototype.toggleEnabled = function () {
+    this.enabled = !this.enabled;
+  };
+
+  Tooltip.prototype.destroy = function () {
+    var self = this;
+    clearTimeout(this.timeout);
+    this.hide(function () {
+      self.offAll();
+      if (self.tipEl && self.tipEl.parentNode) {
+        self.tipEl.parentNode.removeChild(self.tipEl);
+      }
+      self.tipEl = null;
+      self.arrowEl = null;
+    });
+  };
+
+  function tooltipPluginAction(element, option) {
+    var data = tooltipMap.get(element);
+    if (!data && typeof option === 'string' && /destroy|hide/.test(option)) return;
+
+    if (!data) {
+      var opts =
+        typeof option === 'object' && option !== null ? option : {};
+      data = new Tooltip(element, opts);
+      tooltipMap.set(element, data);
+    } else if (typeof option === 'object' && option !== null) {
+      extend(data.options, parseTooltipOptions(element, option));
+      data.init();
+    }
+
+    if (typeof option === 'string') {
+      if (option === 'destroy') {
+        data.destroy();
+        tooltipMap.delete(element);
+      } else if (typeof data[option] === 'function') {
+        data[option]();
+      }
+    }
+  }
+
+  function tooltipResolveElements(selector) {
+    if (!selector) return [];
+    if (typeof selector === 'string') return findAll(document, selector);
+    if (selector.nodeType === 1) return [selector];
+    if (typeof selector.length === 'number') {
+      var out = [];
+      for (var i = 0; i < selector.length; i++) {
+        if (selector[i] && selector[i].nodeType === 1) out.push(selector[i]);
+      }
+      return out;
+    }
+    return [];
+  }
+
   // --- Public API ---
 
   BV.VERSION = '3.4.1';
@@ -1062,6 +1737,8 @@
   BV.Collapse = Collapse;
   BV.Modal = Modal;
   BV.Carousel = Carousel;
+  BV.Tab = Tab;
+  BV.Tooltip = Tooltip;
 
   BV.collapse = function (selector, option) {
     var el = typeof selector === 'string' ? findOne(document, selector) : selector;
@@ -1078,6 +1755,18 @@
     if (el) carouselPlugin(el, option);
   };
 
+  BV.tab = function (selector, option) {
+    var el = typeof selector === 'string' ? findOne(document, selector) : selector;
+    if (el) tabPluginAction(el, option || 'show');
+  };
+
+  BV.tooltip = function (selector, option) {
+    var els = tooltipResolveElements(selector);
+    for (var i = 0; i < els.length; i++) {
+      tooltipPluginAction(els[i], option);
+    }
+  };
+
   BV.init = function () {
     initAlert();
     initDropdown();
@@ -1085,6 +1774,7 @@
     initModal();
     initCarouselDataApi();
     initCarouselRide();
+    initTab();
   };
 
   global.BootstrapVanilla = BV;
