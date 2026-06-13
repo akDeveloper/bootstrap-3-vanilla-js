@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bootstrap 3 — vanilla JS demo</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+      body {
+        padding-top: 20px;
+        padding-bottom: 40px;
+      }
+      .demo-section {
+        margin-bottom: 48px;
+      }
+      .demo-section h2 {
+        margin-top: 0;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #eee;
+      }
+      /* Instant carousel: disable Bootstrap’s item left/transform transitions */
+      #demo-carousel.carousel-demo .carousel-inner > .item {
+        -webkit-transition: none !important;
+        -o-transition: none !important;
+        transition: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="page-header">
+        <h1>Bootstrap 3.4.1 <small>vanilla JS (no jQuery)</small></h1>
+        <p class="lead">
+          This page loads <code>css/bootstrap.min.css</code> and
+          <code>js/bootstrap-vanilla.js</code> only — not jQuery or
+          <code>bootstrap.js</code>.
+        </p>
+      </div>
+
+      <!-- Alerts -->
+      <section class="demo-section" id="section-alerts">
+        <h2>Alerts</h2>
+        <div class="alert alert-success">
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          Dismissible success alert (closes immediately).
+        </div>
+        <div class="alert alert-warning fade in" id="alert-target">
+          <button
+            type="button"
+            class="close"
+            data-dismiss="alert"
+            data-target="#alert-target"
+            aria-label="Close"
+          >
+            <span aria-hidden="true">&times;</span>
+          </button>
+          Alert dismissed via explicit <code>data-target</code>.
+        </div>
+      </section>
+
+      <!-- Dropdowns -->
+      <section class="demo-section" id="section-dropdowns">
+        <h2>Dropdowns</h2>
+        <div class="btn-group">
+          <button
+            type="button"
+            class="btn btn-default dropdown-toggle"
+            data-toggle="dropdown"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
+            Dropdown <span class="caret"></span>
+          </button>
+          <ul class="dropdown-menu">
+            <li><a href="#section-dropdowns">Action</a></li>
+            <li><a href="#section-dropdowns">Another action</a></li>
+            <li role="separator" class="divider"></li>
+            <li><a href="#section-dropdowns">Separated link</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Collapse: single -->
+      <section class="demo-section" id="section-collapse">
+        <h2>Collapse (single)</h2>
+        <p>
+          <a
+            class="btn btn-primary"
+            data-toggle="collapse"
+            href="#collapseExample"
+            aria-expanded="false"
+            aria-controls="collapseExample"
+          >
+            Toggle collapse
+          </a>
+        </p>
+        <div class="collapse" id="collapseExample">
+          <div class="well">Hidden content shown without a transition.</div>
+        </div>
+      </section>
+
+      <!-- Collapse: accordion -->
+      <section class="demo-section" id="section-accordion">
+        <h2>Collapse (accordion)</h2>
+        <div class="panel-group" id="accordion" role="tablist" aria-multiselectable="true">
+          <div class="panel panel-default">
+            <div class="panel-heading" role="tab" id="headingOne">
+              <h4 class="panel-title">
+                <a
+                  role="button"
+                  data-toggle="collapse"
+                  data-parent="#accordion"
+                  href="#collapseOne"
+                  aria-expanded="true"
+                  aria-controls="collapseOne"
+                >
+                  Collapsible Group Item #1
+                </a>
+              </h4>
+            </div>
+            <div
+              id="collapseOne"
+              class="panel-collapse collapse in"
+              role="tabpanel"
+              aria-labelledby="headingOne"
+            >
+              <div class="panel-body">First panel body (open by default).</div>
+            </div>
+          </div>
+          <div class="panel panel-default">
+            <div class="panel-heading" role="tab" id="headingTwo">
+              <h4 class="panel-title">
+                <a
+                  class="collapsed"
+                  role="button"
+                  data-toggle="collapse"
+                  data-parent="#accordion"
+                  href="#collapseTwo"
+                  aria-expanded="false"
+                  aria-controls="collapseTwo"
+                >
+                  Collapsible Group Item #2
+                </a>
+              </h4>
+            </div>
+            <div
+              id="collapseTwo"
+              class="panel-collapse collapse"
+              role="tabpanel"
+              aria-labelledby="headingTwo"
+            >
+              <div class="panel-body">Second panel body.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Modal -->
+      <section class="demo-section" id="section-modal">
+        <h2>Modal</h2>
+        <p>
+          <button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#demoModal">
+            Launch modal (backdrop / Esc close)
+          </button>
+        </p>
+        <p>
+          <button type="button" class="btn btn-warning btn-lg" data-toggle="modal" data-target="#demoModalStatic">
+            Launch modal (close only with buttons)
+          </button>
+        </p>
+        <p class="text-muted small">
+          The second example uses <code>data-backdrop="static"</code> (clicking the dimmed backdrop does not
+          close the modal) and <code>data-keyboard="false"</code> (Esc does not close). Use the
+          <strong>×</strong> in the header or the <strong>Close</strong> button in the footer.
+        </p>
+      </section>
+
+      <!-- Carousel -->
+      <section class="demo-section" id="section-carousel">
+        <h2>Carousel</h2>
+        <div
+          id="demo-carousel"
+          class="carousel carousel-demo slide"
+          data-ride="carousel"
+          data-interval="4000"
+        >
+          <ol class="carousel-indicators">
+            <li data-target="#demo-carousel" data-slide-to="0" class="active"></li>
+            <li data-target="#demo-carousel" data-slide-to="1"></li>
+            <li data-target="#demo-carousel" data-slide-to="2"></li>
+          </ol>
+          <div class="carousel-inner" role="listbox">
+            <div class="item active">
+              <div class="jumbotron" style="margin: 0; min-height: 160px">
+                <div class="container">
+                  <h3>Slide 1</h3>
+                  <p>Instant slide change (JS); CSS transitions overridden for this demo.</p>
+                </div>
+              </div>
+            </div>
+            <div class="item">
+              <div class="jumbotron" style="margin: 0; min-height: 160px">
+                <div class="container">
+                  <h3>Slide 2</h3>
+                  <p>Use prev/next or indicators.</p>
+                </div>
+              </div>
+            </div>
+            <div class="item">
+              <div class="jumbotron" style="margin: 0; min-height: 160px">
+                <div class="container">
+                  <h3>Slide 3</h3>
+                  <p>Keyboard: left / right arrows when focused.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <a class="left carousel-control" href="#demo-carousel" role="button" data-slide="prev">
+            <span class="glyphicon glyphicon-chevron-left" aria-hidden="true"></span>
+            <span class="sr-only">Previous</span>
+          </a>
+          <a class="right carousel-control" href="#demo-carousel" role="button" data-slide="next">
+            <span class="glyphicon glyphicon-chevron-right" aria-hidden="true"></span>
+            <span class="sr-only">Next</span>
+          </a>
+        </div>
+      </section>
+    </div>
+
+    <!-- Modal markup at end of body (Bootstrap convention) -->
+    <div class="modal fade" id="demoModal" tabindex="-1" role="dialog" aria-labelledby="demoModalLabel">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <h4 class="modal-title" id="demoModalLabel">Modal title</h4>
+          </div>
+          <div class="modal-body">
+            Click outside this dialog on the dark backdrop, or press Esc, or use a Close control — all dismiss
+            this modal.
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Static backdrop: no close on outside click; data-keyboard="false" disables Esc -->
+    <div
+      class="modal fade"
+      id="demoModalStatic"
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="demoModalStaticLabel"
+      data-backdrop="static"
+      data-keyboard="false"
+    >
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <h4 class="modal-title" id="demoModalStaticLabel">Static backdrop</h4>
+          </div>
+          <div class="modal-body">
+            Clicking the dark area behind this dialog does <strong>not</strong> close it. Esc is disabled.
+            Close it only with the × above or the Close button below.
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/bootstrap-vanilla.js?v=1" defer></script>
+  </body>
+</html>
