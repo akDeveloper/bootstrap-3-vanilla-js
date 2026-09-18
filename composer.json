@@ -1,0 +1,33 @@
+{
+    "name": "akdeveloper/bootstrap-3-vanilla-js",
+    "description": "Bootstrap 3.4.1 CSS with a jQuery-free vanilla JS layer for alerts, dropdowns, collapse, modals, tabs, tooltips, and carousel.",
+    "type": "library",
+    "keywords": [
+        "bootstrap",
+        "bootstrap3",
+        "css",
+        "javascript",
+        "vanilla-js",
+        "jquery-free",
+        "front-end",
+        "responsive",
+        "ui"
+    ],
+    "homepage": "https://github.com/akDeveloper/bootstrap-3-vanilla-js",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Andreas Kollaros",
+            "email": "andreas@larium.net"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/akDeveloper/bootstrap-3-vanilla-js/issues",
+        "source": "https://github.com/akDeveloper/bootstrap-3-vanilla-js"
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        }
+    }
+}
